@@ -14,10 +14,16 @@ import stat
 import subprocess
 import sys
 
-SIDE_COLS = 36
-TOP_ROWS = 16
-MIN_SIDE = (100, 24)
-MIN_TOP = (60, 36)
+# Preferred picture. She shrinks below this on a narrow row and grows a little
+# on a wide one, always leaving Grok a pane she can work in.
+SIDE_PREF = 36
+SIDE_FLOOR = 20
+SIDE_CAP = 48
+TOP_PREF = 16
+TOP_FLOOR = 12
+TOP_CAP = 24
+MIN_SIDE = (56, 14)
+MIN_TOP = (40, 18)
 
 ROOT = Path(__file__).resolve().parent
 PANE = ROOT / "pane.py"
@@ -31,10 +37,37 @@ def require_size(mode, columns, rows):
         )
 
 
-def split_args(mode):
+def side_cols(columns):
+    """Her pane, in columns. 36 once Grok can keep a long row."""
+    room = max(0, int(columns) - 1)
+    if room >= SIDE_PREF + 60:
+        extra = min(SIDE_CAP - SIDE_PREF, (room - SIDE_PREF - 60) // 5)
+        return SIDE_PREF + extra
+    leave = min(48, max(24, room - SIDE_FLOOR))
+    return max(SIDE_FLOOR, min(SIDE_PREF, room - leave))
+
+
+def top_rows(rows):
+    """Her band, in rows. 16 once Grok still has a stack of lines under it."""
+    room = max(0, int(rows))
+    if room >= TOP_PREF + 10:
+        extra = min(TOP_CAP - TOP_PREF, (room - TOP_PREF - 10) // 4)
+        return TOP_PREF + extra
+    leave = min(10, max(6, room - TOP_FLOOR))
+    return max(TOP_FLOOR, min(TOP_PREF, room - leave))
+
+
+def split_args(mode, columns, rows):
     if mode == "top":
-        return ["-b", "-v", "-l", str(TOP_ROWS)]
-    return ["-h", "-l", str(SIDE_COLS)]
+        return ["-b", "-v", "-l", str(top_rows(rows))]
+    return ["-h", "-l", str(side_cols(columns))]
+
+
+def fit_target(mode, columns, rows):
+    """tmux resize flag and the size her pane should be for this window."""
+    if mode == "top":
+        return "-y", top_rows(rows)
+    return "-x", side_cols(columns)
 
 
 def _tmux(sock, config, *args, check=True):
@@ -63,7 +96,7 @@ def open_private(sock, mode, host_argv, pane_argv, columns, rows, config=None, s
     try:
         created = _tmux(
             sock, config, "split-window", "-d", "-t", f"{session}:0.0",
-            *split_args(mode), "-P", "-F", "#{pane_id}", pane,
+            *split_args(mode, columns, rows), "-P", "-F", "#{pane_id}", pane,
         )
         rift = created.stdout.strip().splitlines()[-1]
         _tmux(sock, config, "set-option", "-p", "-t", rift, "@cyclops_rift", "1")
@@ -127,7 +160,7 @@ def split_into_current(mode, pane_argv):
         ["tmux", "display-message", "-p", "#{pane_id}"], text=True
     ).strip()
     result = subprocess.run(
-        ["tmux", "split-window", "-d", "-t", source, *split_args(mode), "-P", "-F", "#{pane_id}", shlex.join(pane_argv)],
+        ["tmux", "split-window", "-d", "-t", source, *split_args(mode, int(size[0]), int(size[1])), "-P", "-F", "#{pane_id}", shlex.join(pane_argv)],
         text=True, capture_output=True,
     )
     if result.returncode != 0:
@@ -205,7 +238,7 @@ def main(argv):
     except ValueError as exc:
         print(exc, file=sys.stderr)
         return 2
-    pane_argv = [sys.executable, str(PANE)]
+    pane_argv = [sys.executable, str(PANE), mode]
     if os.environ.get("TMUX"):
         try:
             rift = split_into_current(mode, pane_argv)

@@ -501,6 +501,42 @@ class McpTests(unittest.TestCase):
 
 
 class SideTests(unittest.TestCase):
+    def test_name_stays_when_nothing_is_happening(self):
+        idle = "\n".join(plain(*paint(fresh(), 10, "rift", 48)[:2]))
+        self.assertIn("\nrift", idle)
+        self.assertNotIn("working", idle)
+        scene = fresh()
+        apply(scene, "turn.start", 10)
+        working = "\n".join(plain(*paint(scene, 12, "rift", 48)[:2]))
+        self.assertIn("rift · working", working)
+        side = "\n".join("".join(cell[0] for cell in row) for row in paint_side(fresh(), 10, "rift", 36, 24))
+        self.assertIn("rift", side)
+        self.assertNotIn("working", side)
+
+    def test_center_drifts_without_strobing_the_bars(self):
+        early = paint_side(fresh(), 2.0, "rift", 36, 24)
+        later = paint_side(fresh(), 8.0, "rift", 36, 24)
+        bars = lambda grid: [cell for row in grid for cell in row if cell[0] == "│"]
+        self.assertEqual(bars(early), bars(later))
+        eye = lambda grid: [cell[1] for row in grid for cell in row if cell[0] == "◉"]
+        self.assertNotEqual(eye(early), eye(later))
+        column = "".join(row[18][0] for row in early)
+        self.assertGreaterEqual(column.count("·") + column.count("+"), 2)
+        self.assertFalse(any(warm(color) for color in colors_used(early, [])))
+
+    def test_she_sits_under_a_tall_slit(self):
+        tall = "\n".join("".join(cell[0] for cell in row) for row in paint_side(fresh(), 10, "rift", 36, 24))
+        self.assertIn("◡", tall)
+        self.assertIn("╭", tall)
+        self.assertIn("┬", tall)
+        short = "\n".join("".join(cell[0] for cell in row) for row in paint_side(fresh(), 10, "rift", 36, 12))
+        self.assertNotIn("◡", short)
+        scene = fresh()
+        apply(scene, "turn.start", 10)
+        awake = paint_side(scene, 12, "rift", 36, 24)
+        eyes = [cell[1] for row in awake for cell in row if cell[0] == "◉"]
+        self.assertIn((186, 244, 255), eyes)
+
     def test_idle_aperture_does_not_reach(self):
         rows = paint_side(fresh(), 10, "rift", 36, 24)
         text = "\n".join("".join(cell[0] for cell in row) for row in rows)
@@ -523,9 +559,27 @@ class SideTests(unittest.TestCase):
 
     def test_small_terminal_is_refused(self):
         with self.assertRaises(ValueError):
-            launch.require_size("side", 80, 20)
-        self.assertEqual(launch.split_args("side"), ["-h", "-l", "36"])
-        self.assertEqual(launch.split_args("top")[:3], ["-b", "-v", "-l"])
+            launch.require_size("side", 40, 10)
+        with self.assertRaises(ValueError):
+            launch.require_size("top", 30, 12)
+        launch.require_size("side", 80, 24)
+        self.assertEqual(launch.side_cols(100), 36)
+        self.assertEqual(launch.side_cols(80), 31)
+        self.assertGreaterEqual(80 - 1 - launch.side_cols(80), 40)
+        self.assertEqual(launch.top_rows(40), 19)
+        self.assertLess(launch.top_rows(24), 16)
+        self.assertGreaterEqual(launch.top_rows(24), 12)
+        self.assertEqual(launch.split_args("side", 100, 24), ["-h", "-l", "36"])
+        self.assertEqual(launch.split_args("side", 80, 24), ["-h", "-l", "31"])
+        self.assertEqual(launch.split_args("top", 80, 40)[:3], ["-b", "-v", "-l"])
+        self.assertEqual(launch.fit_target("side", 80, 24), ("-x", 31))
+
+    def test_narrow_aperture_stays_inside_the_pane(self):
+        rows = paint_side(fresh(), 10, "rift", 31, 23)
+        self.assertEqual(len(rows), 23)
+        self.assertEqual(len(rows[0]), 31)
+        text = "\n".join("".join(cell[0] for cell in row) for row in rows)
+        self.assertIn("◉", text)
 
     def test_private_side_pane_is_thirty_six_columns(self):
         if shutil.which("tmux") is None:
@@ -543,6 +597,10 @@ class SideTests(unittest.TestCase):
                     ["tmux", "-S", str(sock), "-f", str(config), "display-message", "-p", "-t", "rift:0.1", "#{pane_width}"],
                     text=True,
                 ).strip()
+                host = subprocess.check_output(
+                    ["tmux", "-S", str(sock), "-f", str(config), "display-message", "-p", "-t", "rift:0.0", "#{pane_width}"],
+                    text=True,
+                ).strip()
                 marker = subprocess.check_output(
                     ["tmux", "-S", str(sock), "-f", str(config), "display-message", "-p", "-t", "rift:0.1", "#{@cyclops_rift}"],
                     text=True,
@@ -557,7 +615,8 @@ class SideTests(unittest.TestCase):
                 )
             finally:
                 subprocess.run(["tmux", "-S", str(sock), "kill-server"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        self.assertEqual(width, "36")
+        self.assertEqual(width, str(launch.side_cols(120)))
+        self.assertEqual(host, str(120 - 1 - launch.side_cols(120)))
         self.assertEqual(marker, "1")
         self.assertEqual(window, "grok")
         self.assertIn("rift", left)
@@ -567,8 +626,13 @@ class SideTests(unittest.TestCase):
         grid = paint_side(fresh(), 10, "rift", 36, 12)
         text = pane.frame(grid)
         self.assertNotIn("\n", text)
+        self.assertNotIn("\033[2K", text)
+        self.assertIn("\033[?2026h", text)
+        self.assertIn("\033[?2026l", text)
         self.assertIn("\033[1;1H", text)
         self.assertIn("\033[12;1H", text)
+        again = paint_side(fresh(), 10.1, "rift", 36, 12)
+        self.assertEqual(grid, again)
 
     def test_bar_token_is_state_only(self):
         self.assertEqual(bar.token(fresh(), 10), "◉")

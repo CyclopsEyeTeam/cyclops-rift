@@ -104,6 +104,7 @@ def render_payload(payload, now=None):
     rows, footer, _theme = paint(
         scene, now, link.load_theme(), width, peers, threads,
         authored["text"], authored["mark"], authored.get("sketch") or "",
+        hold=True,
     )
     return ansi_rows(rows, footer)
 

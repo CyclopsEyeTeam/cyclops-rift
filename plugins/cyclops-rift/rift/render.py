@@ -65,6 +65,11 @@ STATE_LABEL = {
     "interrupted": "rift · cut",
 }
 
+
+def state_label(state):
+    """Her name stays up. The word after it is only there while something is happening."""
+    return STATE_LABEL.get(state or "", "rift")
+
 TEXT_MARKS = {
     "spark": ("✶", "*"),
     "keeper": ("◎", "O"),
@@ -80,8 +85,17 @@ def _lerp(a, b, t):
     return tuple(round(a[i] + (b[i] - a[i]) * t) for i in range(3))
 
 
-def _breath(theme, now):
+def _breath(theme, now, hold=False):
+    """Breath of the hood and the ring.
+
+    A live surface holds each step. The exported mark does not: it is one
+    instant, and other presences copy that instant as she drew it.
+    """
+    if hold:
+        now = math.floor(float(now) / 0.8) * 0.8
     wave = 0.5 + 0.5 * math.sin(now / 3.6)
+    if hold:
+        wave = round(wave * 8) / 8
     return _lerp(theme["edge_dim"], theme["edge"], wave)
 
 
@@ -142,8 +156,8 @@ def _paint_filament(grid, filament, now, origin, limit, color, violet):
         _put(grid, row, origin + index, "∴" if tip else "╌", violet if tip else color)
 
 
-def _paint_figure(grid, scene, ax, theme, red, now):
-    """Hoodie, smirk, eyes that brighten only on a real turn."""
+def _paint_figure(grid, scene, ax, theme, red, now, hold=False, top=1):
+    """Hoodie, smirk, eyes that brighten only on a real turn. top is the hood row."""
     level = scene.get("open", 1)
     awake = bool(scene.get("nebula") or scene.get("turn"))
     violet = theme["violet"]
@@ -166,11 +180,11 @@ def _paint_figure(grid, scene, ax, theme, red, now):
             eye = theme["edge_dim"]
     for index, glyph in enumerate(face):
         tone = eye if index in eye_at else violet
-        _put(grid, 2, ax + index, glyph, tone)
-    breath = _breath(theme, now)
+        _put(grid, top + 1, ax + index, glyph, tone)
+    breath = _breath(theme, now, hold=hold)
     for index, glyph in enumerate("╭─╮"):
         tone = breath if index == 1 else theme["edge_dim"]
-        _put(grid, 1, ax + 1 + index, glyph, tone)
+        _put(grid, top, ax + 1 + index, glyph, tone)
     # A short step toward the breath. The chest stays violet.
     chest = _lerp(violet, breath, 0.35)
     for index, glyph in enumerate("╰─┬─╯"):
@@ -180,7 +194,7 @@ def _paint_figure(grid, scene, ax, theme, red, now):
             tone = violet
         else:
             tone = theme["cloth"]
-        _put(grid, 3, ax + index, glyph, tone)
+        _put(grid, top + 2, ax + index, glyph, tone)
 
 
 def _place_pane(origin, width, level):
@@ -326,13 +340,13 @@ def _paint_ground(grid, start, stop, theme):
             _put(grid, 3, col, "─", theme["edge_dim"])
 
 
-def paint(scene, now, theme_name="rift", width=48, peers=None, threads=None, caption="", mark="", sketch=""):
+def paint(scene, now, theme_name="rift", width=48, peers=None, threads=None, caption="", mark="", sketch="", hold=False):
     """Return row strings of cells (char, color). Peers are their own marks."""
     theme = THEMES.get(theme_name, THEMES["rift"])
     width = max(24, width)
     grid = _blank(width)
     ax = _anchor(width)
-    edge = _breath(theme, now)
+    edge = _breath(theme, now, hold=hold)
     red = scene.get("red_at") is not None and 0 <= now - scene["red_at"] < RED_S
     tip = theme["red"] if red else theme["violet"]
 
@@ -354,7 +368,7 @@ def paint(scene, now, theme_name="rift", width=48, peers=None, threads=None, cap
     _paint_ground(grid, origin, limit if on_desk or not box else box, theme)
     _paint_pane(grid, box, pane_w, scene, now, theme, theme["red"] if red else edge, sketch or "")
     _paint_company(grid, scene, ax, box, pane_w, theme)
-    _paint_figure(grid, scene, ax, theme, red, now)
+    _paint_figure(grid, scene, ax, theme, red, now, hold=hold)
 
     if any(0 <= now - moment < SPARK_S for moment in scene.get("sparks") or []):
         _put(grid, 1, ax + 2, "✦", theme["spark"])
@@ -368,7 +382,7 @@ def paint(scene, now, theme_name="rift", width=48, peers=None, threads=None, cap
 
 def _footer(peers, threads, caption, mark, theme, width, state=""):
     cells = []
-    label = STATE_LABEL.get(state, "")
+    label = state_label(state)
     for char in label:
         cells.append((char, theme["edge"]))
     if label and (peers or caption or mark):
@@ -460,30 +474,44 @@ def _grid(width, height):
     return [[(" ", None) for _ in range(width)] for _ in range(height)]
 
 
+def _seat_row(width, height):
+    """Hood row, when the pane can hold her under the slit. None on a short pane."""
+    if width < 18 or height < 18:
+        return None
+    return height - 6
+
+
+def _paint_desk(grid, ax, row, theme):
+    """The short stretch she sits at. Not a floor."""
+    width = len(grid[0])
+    for col in range(ax, ax + 5):
+        if 0 <= row < len(grid) and 0 <= col < width and grid[row][col][0] in {" ", "·", "+"}:
+            _put(grid, row, col, "─", theme["edge_dim"])
+
+
 def paint_side(scene, now, theme_name="rift", width=36, height=40):
-    """The aperture at pane size. Breath and drift only, unless the scene has evidence."""
+    """The aperture, and her under it when the pane is tall enough."""
     theme = THEMES.get(theme_name, THEMES["rift"])
-    width = max(20, int(width))
-    height = max(12, int(height))
+    width = max(1, int(width))
+    height = max(1, int(height))
     grid = _grid(width, height)
-    edge = _breath(theme, now)
     red = scene.get("red_at") is not None and 0 <= now - scene["red_at"] < RED_S
-    ring = theme["red"] if red else edge
+    # The long bars stay one colour. A breath along the whole spine reads as a flicker.
+    ring = theme["red"] if red else theme["edge"]
     violet = theme["violet"]
     tip = theme["red"] if red else theme["violet"]
     cx = width // 2
-    cy = max(4, height // 2 - 1)
     level = scene.get("open", 1)
-    half_h = max(6, min(cy - 2, height - cy - 3, max(6, height // 3)))
+    hood = _seat_row(width, height)
+    # The slit stays above her. A short pane keeps the slit alone.
+    floor = (hood - 2) if hood is not None else (height - 2)
+    cy = min(max(floor, 0), max(0, floor // 2))
+    half_h = min(cy, max(0, floor - cy), max(2, floor // 3))
+    half_h = max(0, half_h)
     reach = {0: 0, 1: 1, 2: 2, 3: 3}.get(level, 1)
     awake = bool(scene.get("nebula") or scene.get("turn"))
 
-    span = max(8, width - 2)
-    for seed in (2.1, 9.4, 15.8, 23.3):
-        col = int(seed + now / 14.0) % span
-        row = int(seed * 3.0) % height
-        if abs(col - cx) > reach + 3 or abs(row - cy) > half_h + 1:
-            _put(grid, row, col, "·" if seed < 12 else "+", theme["star"])
+    _side_sky(grid, now, theme)
 
     if level > 0:
         for dy in range(-half_h, half_h + 1):
@@ -511,7 +539,7 @@ def paint_side(scene, now, theme_name="rift", width=36, height=40):
                 elif awake:
                     tone = theme["edge"]
                 else:
-                    tone = theme["filament"]
+                    tone = _breath(theme, now, hold=True)
                 _put(grid, y, cx, "◉", tone)
             elif scene.get("compacting") and dy == 1:
                 _put(grid, y, cx, "│", theme["violet"])
@@ -525,6 +553,8 @@ def paint_side(scene, now, theme_name="rift", width=36, height=40):
     else:
         _put(grid, cy, cx, "·", theme["edge_dim"])
 
+    if level > 0:
+        _glass_drift(grid, now, cx, cy, half_h, theme)
     for filament in scene.get("filaments") or []:
         if filament.get("kind") == "tool":
             continue
@@ -546,14 +576,57 @@ def paint_side(scene, now, theme_name="rift", width=36, height=40):
                     _put(grid, cy, col, "·", theme["thread"])
             _put(grid, cy, seat, "◦", theme["secondary"])
     if any(0 <= now - moment < SPARK_S for moment in scene.get("sparks") or []):
-        _put(grid, cy - 1, cx, "✦", theme["spark"])
+        if hood is not None:
+            _put(grid, hood, cx, "✦", theme["spark"])
+        else:
+            _put(grid, cy - 1, cx, "✦", theme["spark"])
 
-    label = STATE_LABEL.get(scene.get("state") or "", "")
+    if hood is not None:
+        _paint_figure(grid, scene, cx - 2, theme, red, now, hold=True, top=hood)
+        _paint_desk(grid, cx - 2, hood + 3, theme)
+
+    label = state_label(scene.get("state"))
     if label:
         start = max(0, (width - len(label)) // 2)
         for index, char in enumerate(label):
             _put(grid, height - 1, start + index, char, theme["edge_dim"])
     return grid
+
+
+def _side_sky(grid, now, theme):
+    """Evenly spaced sky. Each mark moves by one cell, including near the slit."""
+    width = len(grid[0])
+    height = len(grid)
+    if width < 3 or height < 3:
+        return
+    count = 4 if height < 28 else 6
+    gap_y = max(3, height // (count + 1))
+    gap_x = max(3, width // (count + 1))
+    for index in range(count):
+        drift = int(now / 14.0 + index * 1.3) % 3 - 1
+        col = min(width - 2, max(1, gap_x * (index + 1) + drift))
+        row = min(height - 2, max(0, gap_y * (index + 1)))
+        _put(grid, row, col, "+" if index % 2 else "·", theme["star"])
+
+
+def _glass_drift(grid, now, cx, cy, half_h, theme):
+    """Dim sky through the open column. Evidence already drawn there stays."""
+    if half_h < 2 or not grid or not grid[0]:
+        return
+    height = len(grid)
+    track = [
+        row for row in range(cy - half_h + 1, cy + half_h)
+        if row != cy and 0 <= row < height
+    ]
+    if len(track) < 3:
+        return
+    step = int(now / 7.0) % len(track)
+    span = len(track) // 3
+    for index in range(3):
+        row = track[(step + index * span) % len(track)]
+        if grid[row][cx][0] != " ":
+            continue
+        _put(grid, row, cx, "+" if index == 1 else "·", theme["star"])
 
 
 def _side_tools(grid, scene, now, cx, cy, reach, theme):

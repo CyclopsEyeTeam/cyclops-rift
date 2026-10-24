@@ -43,16 +43,16 @@ Restart Grok. The two-second refresh is only the breath, the drift, the end of a
 
 ## Beside Grok
 
-The status row is the picture. Four lines: she sits on the left, the rift sits a short reach to her right, and the beam crosses only while a turn or a tool is out. A fifth line is the state (`rift · working`, and the rest). The row never grows past that. Grok has no side pane.
+The status row is the picture. Four lines: she sits on the left, the rift sits a short reach to her right, and the beam crosses only while a turn or a tool is out. A fifth line is her name, and the state after it while something is happening (`rift`, or `rift · working`). The row never grows past that. Grok has no side pane.
 
-A taller aperture still fits in tmux, if you want one. It is optional. The same events drive it.
+A taller aperture still fits in tmux, if you want one. It is optional. When the pane is tall enough she sits under the slit: hood, the smirk, a short desk. The same events drive it.
 
 ```bash
 grok-rift
 grok-rift top
 ```
 
-`grok-rift` puts Grok on the left and Rift in a 36-column pane on the right. `top` uses a 16-row band above Grok. From an ordinary terminal it starts a private tmux and does not touch any tmux you already have. From inside tmux it adds one pane and does not change session settings. Grok exiting closes only that pane. Closing the pane leaves Grok.
+`grok-rift` puts Grok on the left and Rift on the right. She takes 36 columns when the row has room for them, and less on a narrower terminal, so an 80-column window still leaves Grok a pane. `top` uses a band above Grok, 16 rows when the terminal is tall enough and shorter when it is not. From an ordinary terminal it starts a private tmux and does not touch any tmux you already have. From inside tmux it adds one pane and does not change session settings. Grok exiting closes only that pane. Closing the pane leaves Grok.
 
 The side drawing is the same aperture, tall: one opening, filaments only while a tool is out, cyan while a turn is actually running. The status row inside Grok is the wide one.
 
