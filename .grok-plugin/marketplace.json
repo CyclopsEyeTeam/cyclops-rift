@@ -1,0 +1,13 @@
+{
+  "name": "cyclops-rift",
+  "description": "Cyclops Rift, Grok's terminal presence",
+  "owner": { "name": "Cyclops" },
+  "plugins": [
+    {
+      "name": "cyclops-rift",
+      "description": "A rift that opens, reaches, and closes from real Grok events.",
+      "version": "0.1.0",
+      "source": { "type": "local", "path": "./plugins/cyclops-rift" }
+    }
+  ]
+}

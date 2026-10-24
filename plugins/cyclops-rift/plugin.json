@@ -1,0 +1,8 @@
+{
+  "name": "cyclops-rift",
+  "version": "0.1.0",
+  "description": "Cyclops Rift, Grok's terminal presence. It moves only when the session emits an event.",
+  "author": {
+    "name": "Cyclops"
+  }
+}

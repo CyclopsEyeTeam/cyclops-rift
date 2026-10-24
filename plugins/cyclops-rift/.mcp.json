@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "cyclops-rift": {
+      "command": "python3",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/rift/mcp_server.py"]
+    }
+  }
+}

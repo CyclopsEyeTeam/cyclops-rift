@@ -1,0 +1,19 @@
+{
+  "description": "Cyclops Rift observes Grok events and writes coarse local state. It returns no decision and no context.",
+  "hooks": {
+    "SessionStart": [{ "hooks": [{ "type": "command", "command": "python3 \"${GROK_PLUGIN_ROOT:-$CLAUDE_PLUGIN_ROOT}/rift/hook.py\"", "timeout": 3 }] }],
+    "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "python3 \"${GROK_PLUGIN_ROOT:-$CLAUDE_PLUGIN_ROOT}/rift/hook.py\"", "timeout": 3 }] }],
+    "PreToolUse": [{ "hooks": [{ "type": "command", "command": "python3 \"${GROK_PLUGIN_ROOT:-$CLAUDE_PLUGIN_ROOT}/rift/hook.py\"", "timeout": 3 }] }],
+    "PostToolUse": [{ "hooks": [{ "type": "command", "command": "python3 \"${GROK_PLUGIN_ROOT:-$CLAUDE_PLUGIN_ROOT}/rift/hook.py\"", "timeout": 3 }] }],
+    "PostToolUseFailure": [{ "hooks": [{ "type": "command", "command": "python3 \"${GROK_PLUGIN_ROOT:-$CLAUDE_PLUGIN_ROOT}/rift/hook.py\"", "timeout": 3 }] }],
+    "Stop": [{ "hooks": [{ "type": "command", "command": "python3 \"${GROK_PLUGIN_ROOT:-$CLAUDE_PLUGIN_ROOT}/rift/hook.py\"", "timeout": 3 }] }],
+    "StopCancelled": [{ "hooks": [{ "type": "command", "command": "python3 \"${GROK_PLUGIN_ROOT:-$CLAUDE_PLUGIN_ROOT}/rift/hook.py\"", "timeout": 3 }] }],
+    "StopFailure": [{ "hooks": [{ "type": "command", "command": "python3 \"${GROK_PLUGIN_ROOT:-$CLAUDE_PLUGIN_ROOT}/rift/hook.py\"", "timeout": 3 }] }],
+    "Notification": [{ "hooks": [{ "type": "command", "command": "python3 \"${GROK_PLUGIN_ROOT:-$CLAUDE_PLUGIN_ROOT}/rift/hook.py\"", "timeout": 3 }] }],
+    "SubagentStart": [{ "hooks": [{ "type": "command", "command": "python3 \"${GROK_PLUGIN_ROOT:-$CLAUDE_PLUGIN_ROOT}/rift/hook.py\"", "timeout": 3 }] }],
+    "SubagentStop": [{ "hooks": [{ "type": "command", "command": "python3 \"${GROK_PLUGIN_ROOT:-$CLAUDE_PLUGIN_ROOT}/rift/hook.py\"", "timeout": 3 }] }],
+    "PreCompact": [{ "hooks": [{ "type": "command", "command": "python3 \"${GROK_PLUGIN_ROOT:-$CLAUDE_PLUGIN_ROOT}/rift/hook.py\"", "timeout": 3 }] }],
+    "PostCompact": [{ "hooks": [{ "type": "command", "command": "python3 \"${GROK_PLUGIN_ROOT:-$CLAUDE_PLUGIN_ROOT}/rift/hook.py\"", "timeout": 3 }] }],
+    "SessionEnd": [{ "hooks": [{ "type": "command", "command": "python3 \"${GROK_PLUGIN_ROOT:-$CLAUDE_PLUGIN_ROOT}/rift/hook.py\"", "timeout": 3 }] }]
+  }
+}
